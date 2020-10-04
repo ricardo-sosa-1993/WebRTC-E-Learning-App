@@ -6,11 +6,18 @@ import {
   getAudioAndVideoStream,
 } from "../utils/webrtc";
 
+const AUDIO_ANALYSIS_INTERVAL = 100;
+// @ts-ignore
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
 type PeerConnection = {
   isMaster: boolean;
   webRtcPeerConnectionObject: any;
   userName: string;
   videoAndAudioStream: any;
+  audioLevel: number;
+  analyser: any;
+  dataArray: any;
 };
 
 type SliceState = {
@@ -18,7 +25,11 @@ type SliceState = {
   audioAndVideoStream?: any;
   selfUuid: string | null;
   selfUsername: string | null;
+  selfAudioLevel: number | null;
   peerConnections: Record<string, PeerConnection>;
+  audioAnalyser: any;
+  audioDataArray: any;
+  userUuidTalking: string | null;
 };
 
 const initialState: SliceState = {
@@ -26,7 +37,11 @@ const initialState: SliceState = {
   audioAndVideoStream: null,
   selfUuid: null,
   selfUsername: null,
+  selfAudioLevel: null,
   peerConnections: {},
+  audioAnalyser: null,
+  audioDataArray: null,
+  userUuidTalking: null,
 };
 
 const slice = createSlice({
@@ -42,6 +57,17 @@ const slice = createSlice({
     setPeerConnection: (state, action) =>
       void (state.peerConnections[action.payload.uuid] =
         action.payload.peerConnection),
+    setPeerConnectionAudioLevel: (state, action) =>
+      void (state.peerConnections[action.payload.uuid].audioLevel =
+        action.payload.audioLevel),
+    setSelfAudioLevel: (state, action) =>
+      void (state.selfAudioLevel = action.payload),
+    setAudioAnalyser: (state, action) =>
+      void (state.audioAnalyser = action.payload),
+    setAudioDataArray: (state, action) =>
+      void (state.audioDataArray = action.payload),
+    setUserUuidTalking: (state, action) =>
+      void (state.userUuidTalking = action.payload),
   },
 });
 
@@ -51,6 +77,11 @@ export const {
   setSelfUuid,
   setSelfUsername,
   setPeerConnection,
+  setPeerConnectionAudioLevel,
+  setSelfAudioLevel,
+  setAudioAnalyser,
+  setAudioDataArray,
+  setUserUuidTalking,
 } = slice.actions;
 
 /*
@@ -94,12 +125,19 @@ function sendOffer(
 
   const onAddStreamCallback = (event: any) => {
     const peerConnection = getState().connection.peerConnections[newUserUuid];
+    const source = audioCtx.createMediaStreamSource(event.streams[0]);
+    const analyser = audioCtx.createAnalyser();
+    source.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    const dataArray = new Uint8Array(analyser.fftSize);
     dispatch(
       setPeerConnection({
         uuid: newUserUuid,
         peerConnection: {
           ...peerConnection,
           videoAndAudioStream: event.streams[0],
+          audioAnalyser: analyser,
+          audioDataArray: dataArray,
         },
       })
     );
@@ -177,12 +215,20 @@ function sendAnswer(
 
   const onAddStreamCallback = (event: any) => {
     const peerConnection = getState().connection.peerConnections[from];
+    const source = audioCtx.createMediaStreamSource(event.streams[0]);
+    const analyser = audioCtx.createAnalyser();
+    source.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    const dataArray = new Uint8Array(analyser.fftSize);
+
     dispatch(
       setPeerConnection({
         uuid: from,
         peerConnection: {
           ...peerConnection,
           videoAndAudioStream: event.streams[0],
+          audioAnalyser: analyser,
+          audioDataArray: dataArray,
         },
       })
     );
@@ -214,20 +260,89 @@ function sendAnswer(
   );
 }
 
+export const setupAudioAnalysisInterval = () => (
+  dispatch: any,
+  getState: any
+) => {
+  let audioLevelsBoard: Record<string, number> = {};
+  let maxAudioLevelUserUuid: string | null = null;
+  let maxAudioLevelValue: number = 0;
+
+  setInterval(() => {
+    audioLevelsBoard = {};
+    maxAudioLevelUserUuid = null;
+    maxAudioLevelValue = 0;
+
+    // Peer connections audio analysis
+    const peerConnections = getState().connection.peerConnections;
+
+    Object.keys(peerConnections).forEach((peerUuid) => {
+      const { audioAnalyser, audioDataArray } = peerConnections[peerUuid];
+
+      if (!audioAnalyser || !audioDataArray) return;
+
+      audioAnalyser.getByteTimeDomainData(audioDataArray);
+      const sum = audioDataArray.reduce(
+        (acc: any, curr: any) => acc + Math.abs(curr - 128),
+        0
+      );
+      const audioLevel = sum / audioDataArray.length;
+      audioLevelsBoard[peerUuid] = audioLevel;
+      dispatch(setPeerConnectionAudioLevel({ uuid: peerUuid, audioLevel }));
+    });
+
+    // Self audio analysis
+    const { audioAnalyser, audioDataArray, selfUuid } = getState().connection;
+
+    if (!audioAnalyser || !audioDataArray) return;
+
+    audioAnalyser.getByteTimeDomainData(audioDataArray);
+    const sum = audioDataArray.reduce(
+      (acc: any, curr: any) => acc + Math.abs(curr - 128),
+      0
+    );
+    const audioLevel = sum / audioDataArray.length;
+    audioLevelsBoard[selfUuid] = audioLevel;
+    dispatch(setSelfAudioLevel(audioLevel));
+
+    Object.keys(audioLevelsBoard).forEach((userUuid) => {
+      if (
+        audioLevelsBoard[userUuid] &&
+        audioLevelsBoard[userUuid] > maxAudioLevelValue
+      ) {
+        maxAudioLevelValue = audioLevelsBoard[userUuid];
+        maxAudioLevelUserUuid = userUuid;
+      }
+    });
+
+    dispatch(setUserUuidTalking(maxAudioLevelUserUuid));
+  }, AUDIO_ANALYSIS_INTERVAL);
+};
+
 export const setupMasterConnection = (
   roomId: string,
   selfUuid: string,
   userName: string
 ) => (dispatch: any, getState: any) => {
+  console.log("room id ", roomId);
   // Join to room
   const socket = getWebSocket(roomId, selfUuid, userName);
 
-  getAudioAndVideoStream((audioAndVideoStream: any) =>
-    dispatch(setAudioAndVideoStream(audioAndVideoStream))
-  );
+  getAudioAndVideoStream((audioAndVideoStream: any) => {
+    const source = audioCtx.createMediaStreamSource(audioAndVideoStream);
+    const analyser = audioCtx.createAnalyser();
+    source.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    const dataArray = new Uint8Array(analyser.fftSize);
+
+    dispatch(setAudioAndVideoStream(audioAndVideoStream));
+    dispatch(setAudioAnalyser(analyser));
+    dispatch(setAudioDataArray(dataArray));
+  });
   dispatch(setIsMaster(true));
   dispatch(setSelfUuid(selfUuid));
   dispatch(setSelfUsername(userName));
+  dispatch(setupAudioAnalysisInterval());
 
   // Establish connection with new members who join to room and share other members with them
   socket.on(
@@ -286,12 +401,21 @@ export const setupSlaveConnection = (
   // Join room
   const socket = getWebSocket(roomId, selfUuid, userName);
 
-  getAudioAndVideoStream((audioAndVideoStream: any) =>
-    dispatch(setAudioAndVideoStream(audioAndVideoStream))
-  );
+  getAudioAndVideoStream((audioAndVideoStream: any) => {
+    const source = audioCtx.createMediaStreamSource(audioAndVideoStream);
+    const analyser = audioCtx.createAnalyser();
+    source.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    const dataArray = new Uint8Array(analyser.fftSize);
+
+    dispatch(setAudioAndVideoStream(audioAndVideoStream));
+    dispatch(setAudioAnalyser(analyser));
+    dispatch(setAudioDataArray(dataArray));
+  });
   dispatch(setIsMaster(false));
   dispatch(setSelfUuid(selfUuid));
   dispatch(setSelfUsername(userName));
+  dispatch(setupAudioAnalysisInterval());
 
   // On web rtc offer from master
   socket.on(

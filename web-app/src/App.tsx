@@ -35,18 +35,6 @@ const GlobalStyle = createGlobalStyle`
 const AppWrapper = styled.div``;
 
 function App() {
-  const selfUuid = useSelector((state: RootState) => state.connection.selfUuid);
-
-  if (selfUuid) {
-    return (
-      <ThemeProvider theme={theme}>
-        <GlobalStyle />
-        <AppWrapper>
-          <Call />
-        </AppWrapper>
-      </ThemeProvider>
-    );
-  }
 
   return (
     <ThemeProvider theme={theme}>
@@ -59,6 +47,9 @@ function App() {
             </Route>
             <Route path="/join-call/:id">
               <SignUp isJoinCall={true} />
+            </Route>
+            <Route path="/call">
+              <Call />
             </Route>
             <Route>
               <Redirect to="/create-call" />

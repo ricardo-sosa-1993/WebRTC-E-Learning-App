@@ -7,7 +7,7 @@ import {
   setupMasterConnection,
   setupSlaveConnection,
 } from "../store/connection";
-import { useParams } from "react-router-dom";
+import { useParams, useHistory } from "react-router-dom";
 import { v1 as uuidv1 } from "uuid";
 
 const SignUpWrapper = styled.div`
@@ -24,13 +24,16 @@ type SignUpProps = {
 function SignUp({ isJoinCall }: SignUpProps) {
   const { id: callId = "" } = useParams<{ id?: string }>();
   const dispatch = useDispatch();
+  const routerHistory = useHistory();
 
   function handleOnCreate(username: string) {
     dispatch(setupMasterConnection(uuidv1(), uuidv1(), username));
+    routerHistory.push('/call');
   }
 
   function handleOnJoin(username: string) {
     dispatch(setupSlaveConnection(callId, uuidv1(), username));
+    routerHistory.push('/call');
   }
 
   if (isJoinCall) {

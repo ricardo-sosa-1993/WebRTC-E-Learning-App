@@ -63,21 +63,27 @@ function Call() {
       <StyledToolsBar />
       <MainContainer></MainContainer>
       <UsersContainer>
-        <UserBox
-          audioAndVideoStream={audioAndVideoStream}
-          audioLevel={selfAudioLevel}
-          userName={selfUsername}
-          talking={userUuidTalking === selfUuid}
-          muted
-        />
-        {Object.keys(peerConnections).map((peerUuid) => (
+        {audioAndVideoStream && (
           <UserBox
-            audioAndVideoStream={peerConnections[peerUuid].videoAndAudioStream}
-            audioLevel={peerConnections[peerUuid].audioLevel}
-            userName={peerConnections[peerUuid].userName}
-            talking={userUuidTalking === peerUuid}
+            audioAndVideoStream={audioAndVideoStream}
+            audioLevel={selfAudioLevel}
+            userName={selfUsername}
+            talking={userUuidTalking === selfUuid}
+            muted
           />
-        ))}
+        )}
+        {Object.keys(peerConnections)
+          .filter((peerUuid) => peerConnections[peerUuid].videoAndAudioStream)
+          .map((peerUuid) => (
+            <UserBox
+              audioAndVideoStream={
+                peerConnections[peerUuid].videoAndAudioStream
+              }
+              audioLevel={peerConnections[peerUuid].audioLevel}
+              userName={peerConnections[peerUuid].userName}
+              talking={userUuidTalking === peerUuid}
+            />
+          ))}
       </UsersContainer>
     </CallWrapper>
   );

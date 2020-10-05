@@ -9,7 +9,7 @@ export default {
   },
   font: "Roboto",
   fontSizes: {
-    small: "1.rem",
+    small: "1rem",
     medium: "1.5rem",
     large: "2rem",
   },

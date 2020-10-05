@@ -4,6 +4,9 @@ import { RootState } from "../store";
 import UserBox from "../components/UserBox";
 import { Redirect } from "react-router-dom";
 import styled from "styled-components";
+import CallInfo from "../components/CallInfo";
+import ToolsBar from "../components/ToolsBar";
+import draggable from "../hocs/draggable";
 
 const CallWrapper = styled.div``;
 const MainContainer = styled.div`
@@ -20,8 +23,20 @@ const UsersContainer = styled.div`
   }
 
   & > *:first-child {
-      margin-top: 0px;
+    margin-top: 0px;
   }
+`;
+const StyledCallInfo = draggable(styled(CallInfo)`
+  position: absolute;
+  top: 10px;
+  left: 0;
+  right: 0;
+  margin-left: auto;
+  margin-right: auto;
+`);
+const StyledToolsBar = styled(ToolsBar)`
+  position: absolute;
+  bottom: 10px;
 `;
 
 function Call() {
@@ -31,8 +46,12 @@ function Call() {
     selfUuid,
     selfAudioLevel,
     selfUsername,
-    userUuidTalking
+    userUuidTalking,
+    roomId,
+    isMaster,
   } = useSelector((state: RootState) => state.connection);
+  const baseUrl = window.location.href.split("/call")[0];
+  const callUrl = `${baseUrl}/join-call/${roomId}`;
 
   if (!selfUuid) {
     return <Redirect to="/create-call" />;
@@ -40,6 +59,8 @@ function Call() {
 
   return (
     <CallWrapper>
+      {isMaster && <StyledCallInfo callUrl={callUrl} />}
+      <StyledToolsBar />
       <MainContainer></MainContainer>
       <UsersContainer>
         <UserBox
@@ -62,4 +83,6 @@ function Call() {
   );
 }
 
-export default Call;
+export default React.memo(Call, function (prevProps, nextProps) {
+  return true;
+});

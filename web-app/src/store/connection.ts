@@ -30,6 +30,7 @@ type SliceState = {
   audioAnalyser: any;
   audioDataArray: any;
   userUuidTalking: string | null;
+  roomId: string | null;
 };
 
 const initialState: SliceState = {
@@ -42,6 +43,7 @@ const initialState: SliceState = {
   audioAnalyser: null,
   audioDataArray: null,
   userUuidTalking: null,
+  roomId: null,
 };
 
 const slice = createSlice({
@@ -68,6 +70,7 @@ const slice = createSlice({
       void (state.audioDataArray = action.payload),
     setUserUuidTalking: (state, action) =>
       void (state.userUuidTalking = action.payload),
+    setRoomId: (state, action) => void (state.roomId = action.payload),
   },
 });
 
@@ -82,6 +85,7 @@ export const {
   setAudioAnalyser,
   setAudioDataArray,
   setUserUuidTalking,
+  setRoomId,
 } = slice.actions;
 
 /*
@@ -332,7 +336,6 @@ export const setupMasterConnection = (
     const source = audioCtx.createMediaStreamSource(audioAndVideoStream);
     const analyser = audioCtx.createAnalyser();
     source.connect(analyser);
-    analyser.connect(audioCtx.destination);
     const dataArray = new Uint8Array(analyser.fftSize);
 
     dispatch(setAudioAndVideoStream(audioAndVideoStream));
@@ -342,6 +345,7 @@ export const setupMasterConnection = (
   dispatch(setIsMaster(true));
   dispatch(setSelfUuid(selfUuid));
   dispatch(setSelfUsername(userName));
+  dispatch(setRoomId(roomId));
   dispatch(setupAudioAnalysisInterval());
 
   // Establish connection with new members who join to room and share other members with them
@@ -405,7 +409,6 @@ export const setupSlaveConnection = (
     const source = audioCtx.createMediaStreamSource(audioAndVideoStream);
     const analyser = audioCtx.createAnalyser();
     source.connect(analyser);
-    analyser.connect(audioCtx.destination);
     const dataArray = new Uint8Array(analyser.fftSize);
 
     dispatch(setAudioAndVideoStream(audioAndVideoStream));
@@ -415,6 +418,7 @@ export const setupSlaveConnection = (
   dispatch(setIsMaster(false));
   dispatch(setSelfUuid(selfUuid));
   dispatch(setSelfUsername(userName));
+  dispatch(setRoomId(roomId));
   dispatch(setupAudioAnalysisInterval());
 
   // On web rtc offer from master

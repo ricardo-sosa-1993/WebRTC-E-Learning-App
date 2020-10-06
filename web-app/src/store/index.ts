@@ -1,9 +1,11 @@
 import { configureStore, ThunkAction, Action, getDefaultMiddleware } from '@reduxjs/toolkit';
 import connectionReducer from './connection';
+import uiReducer from './ui';
 
 export const store = configureStore({
   reducer: {
     connection: connectionReducer,
+    ui: uiReducer
   },
   middleware: getDefaultMiddleware({
     serializableCheck: false,

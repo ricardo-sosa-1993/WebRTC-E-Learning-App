@@ -9,16 +9,22 @@ function draggable(Component: any) {
     const [xPos, setXPos] = useState<number | null>(null);
     const [yPos, setYPos] = useState<number | null>(null);
     const [startWidth, setStartWitdth] = useState<number | null>(null);
+    const [startHeight, setStartHeight] = useState<number | null>(null);
 
-    if(componentRef.current && (startWidth === null)){
-      // @ts-ignore
+    if(componentRef.current && (startWidth === null) && (startHeight === null)){
+      setTimeout(() => {
+        // @ts-ignore
       setStartWitdth(componentRef.current.getBoundingClientRect().width);
+      // @ts-ignore
+      setStartHeight(componentRef.current.getBoundingClientRect().height);
+      }, 300);
     }
 
     const style = {
       ...((xPos !== null || yPos !== null) && {
         position: "fixed",
-        width: startWidth
+        width: startWidth,
+        height: startHeight,
       }),
       // @ts-ignore
       ...(yPos !== null && { top: `${yPos}px`, marginTop: "unset" }),

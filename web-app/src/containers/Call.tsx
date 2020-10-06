@@ -1,5 +1,5 @@
 import React from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../store";
 import UserBox from "../components/UserBox";
 import { Redirect } from "react-router-dom";
@@ -7,6 +7,8 @@ import styled from "styled-components";
 import CallInfo from "../components/CallInfo";
 import ToolsBar from "../components/ToolsBar";
 import draggable from "../hocs/draggable";
+import Toast from "./Toast";
+import { toast } from "../store/ui";
 
 const CallWrapper = styled.div``;
 const MainContainer = styled.div`
@@ -36,10 +38,15 @@ const StyledCallInfo = draggable(styled(CallInfo)`
 `);
 const StyledToolsBar = styled(ToolsBar)`
   position: absolute;
-  bottom: 10px;
+  bottom: 8%;
+  left: 0;
+  right: 0;
+  margin-left: auto;
+  margin-right: auto;
 `;
 
 function Call() {
+  const dispatch = useDispatch();
   const {
     audioAndVideoStream,
     peerConnections,
@@ -59,8 +66,9 @@ function Call() {
 
   return (
     <CallWrapper>
+      <Toast />
       {isMaster && <StyledCallInfo callUrl={callUrl} />}
-      <StyledToolsBar />
+      <StyledToolsBar onMute={() => dispatch(toast('aaaa'))}/>
       <MainContainer></MainContainer>
       <UsersContainer>
         {audioAndVideoStream && (

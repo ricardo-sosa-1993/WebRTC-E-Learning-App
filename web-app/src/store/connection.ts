@@ -5,10 +5,19 @@ import {
   createWebRtcAnswer,
   getAudioAndVideoStream,
 } from "../utils/webrtc";
+import { toast } from "./ui";
 
 const AUDIO_ANALYSIS_INTERVAL = 100;
+
+// Data channel constants
+const COMMANDS_DATACHANNEL = "commandsDataChannel";
+
+// Commands constants
+const SET_AUDIO_ENABLED = "SET_AUDIO_ENABLED";
+
 // @ts-ignore
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const dataChannels = [COMMANDS_DATACHANNEL];
 
 type PeerConnection = {
   isMaster: boolean;
@@ -16,8 +25,10 @@ type PeerConnection = {
   userName: string;
   videoAndAudioStream: any;
   audioLevel: number;
+  audioEnabled: boolean;
   analyser: any;
   dataArray: any;
+  commandsDataChannel: any;
 };
 
 type SliceState = {
@@ -31,6 +42,7 @@ type SliceState = {
   audioDataArray: any;
   userUuidTalking: string | null;
   roomId: string | null;
+  audioEnabled: boolean;
 };
 
 const initialState: SliceState = {
@@ -44,6 +56,7 @@ const initialState: SliceState = {
   audioDataArray: null,
   userUuidTalking: null,
   roomId: null,
+  audioEnabled: true,
 };
 
 const slice = createSlice({
@@ -62,6 +75,9 @@ const slice = createSlice({
     setPeerConnectionAudioLevel: (state, action) =>
       void (state.peerConnections[action.payload.uuid].audioLevel =
         action.payload.audioLevel),
+    setPeerConnectionAudioEnabled: (state, action) =>
+      void (state.peerConnections[action.payload.uuid].audioEnabled =
+        action.payload.audioEnabled),
     setSelfAudioLevel: (state, action) =>
       void (state.selfAudioLevel = action.payload),
     setAudioAnalyser: (state, action) =>
@@ -71,6 +87,8 @@ const slice = createSlice({
     setUserUuidTalking: (state, action) =>
       void (state.userUuidTalking = action.payload),
     setRoomId: (state, action) => void (state.roomId = action.payload),
+    setAudioEnabled: (state, action) =>
+      void (state.audioEnabled = action.payload),
   },
 });
 
@@ -86,6 +104,8 @@ export const {
   setAudioDataArray,
   setUserUuidTalking,
   setRoomId,
+  setAudioEnabled,
+  setPeerConnectionAudioEnabled
 } = slice.actions;
 
 /*
@@ -96,6 +116,22 @@ export const {
  * 4) Slave sends webrtc sdp (answer) with user info to master and other room members
  * 5) They exchage ice candidates with each other
  */
+
+function handleCommandsMessage(message: any, peerUuid: string, dispatch: any) {
+  const commandName = message.name;
+  const commandValue = message.value;
+
+  if (commandName === SET_AUDIO_ENABLED) {
+    dispatch(setPeerConnectionAudioEnabled({ uuid: peerUuid, audioEnabled: commandValue}));
+  }
+}
+
+function setupDataChannelListener(dataChannelName: string, dataChannel: any, peerUuid: string, dispatch: any) {
+  if (dataChannelName === COMMANDS_DATACHANNEL) {
+    dataChannel.onmessage = (event: any) =>
+      handleCommandsMessage(JSON.parse(event.data), peerUuid, dispatch);
+  }
+}
 
 function sendOffer(
   dispatch: any,
@@ -125,7 +161,7 @@ function sendOffer(
     // dispatch(setConnectionState(connectionState));
   };
 
-  const onMessageCallback = () => {};
+  //const onMessageCallback = () => {};
 
   const onAddStreamCallback = (event: any) => {
     const peerConnection = getState().connection.peerConnections[newUserUuid];
@@ -134,6 +170,7 @@ function sendOffer(
     source.connect(analyser);
     analyser.connect(audioCtx.destination);
     const dataArray = new Uint8Array(analyser.fftSize);
+
     dispatch(
       setPeerConnection({
         uuid: newUserUuid,
@@ -147,7 +184,7 @@ function sendOffer(
     );
   };
 
-  const callback = (offer: any, peerConnection: any) => {
+  const callback = (offer: any, peerConnection: any, dataChannels: any) => {
     const roomMembers = getState().connection.peerConnections || {};
     const otherRoomMembers = Object.keys(roomMembers).reduce(
       (acc: any, memberUuid: string) => {
@@ -158,6 +195,9 @@ function sendOffer(
       },
       {}
     );
+    Object.keys(dataChannels).forEach((dataChannelName) => {
+      setupDataChannelListener(dataChannelName, dataChannels[dataChannelName], newUserUuid, dispatch);
+    });
     dispatch(
       setPeerConnection({
         uuid: newUserUuid,
@@ -165,6 +205,8 @@ function sendOffer(
           isMaster: peerIsMaster,
           webRtcPeerConnectionObject: peerConnection,
           userName: newUserName,
+          audioEnabled: true,
+          ...dataChannels,
         },
       })
     );
@@ -184,8 +226,8 @@ function sendOffer(
   createWebRtcOffer(
     onIceCandidateCallback,
     onConnectionChangeCallback,
-    onMessageCallback,
     onAddStreamCallback,
+    dataChannels,
     callback
   );
 }
@@ -215,7 +257,18 @@ function sendAnswer(
     // dispatch(setConnectionState(connectionState));
   };
 
-  const onMessageCallback = () => {};
+  const onDataChannelCallback = (event: any) => {
+    const dataChannelName = event.channel.label;
+    const dataChannel = event.channel;
+    setupDataChannelListener(dataChannelName, dataChannel, from, dispatch);
+    const peerConnection = getState().connection.peerConnections[from];
+    dispatch(
+      setPeerConnection({
+        uuid: from,
+        peerConnection: { ...peerConnection, [dataChannelName]: dataChannel },
+      })
+    );
+  };
 
   const onAddStreamCallback = (event: any) => {
     const peerConnection = getState().connection.peerConnections[from];
@@ -248,6 +301,7 @@ function sendAnswer(
           isMaster: peerIsMaster,
           userName: newUserName,
           webRtcPeerConnectionObject: peerConnection,
+          audioEnabled: true
         },
       })
     );
@@ -258,7 +312,7 @@ function sendAnswer(
     offer,
     onIceCandidateCallback,
     onConnectionChangeCallback,
-    onMessageCallback,
+    onDataChannelCallback,
     onAddStreamCallback,
     callback
   );
@@ -328,7 +382,6 @@ export const setupMasterConnection = (
   selfUuid: string,
   userName: string
 ) => (dispatch: any, getState: any) => {
-  console.log("room id ", roomId);
   // Join to room
   const socket = getWebSocket(roomId, selfUuid, userName);
 
@@ -502,6 +555,26 @@ export const setupSlaveConnection = (
       }
     }
   });
+};
+
+export const toggleAudioEnabled = () => (dispatch: any, getState: any) => {
+  const newAudioEnabled = !getState().connection.audioEnabled;
+  if (getState().connection.audioAndVideoStream) {
+    getState().connection.audioAndVideoStream.getAudioTracks()[0].enabled = newAudioEnabled;
+  }
+  if (newAudioEnabled) {
+    dispatch(toast("Audio activado 🙂"));
+  } else {
+    dispatch(toast("Audio desactivado 😶"));
+  }
+  const peerConnections = getState().connection.peerConnections || {};
+  Object.keys(peerConnections).forEach((peerUuid: any) => {
+    const peerConnection = peerConnections[peerUuid];
+    peerConnection.commandsDataChannel.send(
+      JSON.stringify({ name: SET_AUDIO_ENABLED, value: newAudioEnabled })
+    );
+  });
+  dispatch(setAudioEnabled(newAudioEnabled));
 };
 
 export default slice.reducer;

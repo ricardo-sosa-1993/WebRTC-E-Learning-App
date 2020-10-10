@@ -30,7 +30,7 @@ function Toast() {
   return (
     <StyledContainer>
       {toasts.map((toast) => (
-        <StyledToast>toast.text</StyledToast>
+        <StyledToast>{toast.text}</StyledToast>
       ))}
     </StyledContainer>
   );

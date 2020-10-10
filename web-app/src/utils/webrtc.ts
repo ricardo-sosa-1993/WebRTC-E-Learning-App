@@ -37,8 +37,8 @@ async function getAudioAndVideoStream(callback?: Function) {
 async function createWebRtcOffer(
   onIceCandidateCallback: Function,
   onConnectionChangeCallback: Function,
-  onMessageCallback: Function,
   onAddStreamCallback: Function,
+  dataChannelNames: string[],
   callback: Function
 ) {
   const peerConnection: any = new RTCPeerConnection({
@@ -46,11 +46,18 @@ async function createWebRtcOffer(
   });
 
   // setup data channel
-  const dataChannel = peerConnection.createDataChannel(
-    "dataChannel",
-    dataChannelOptions
-  );
-  dataChannel.onmessage = onMessageCallback;
+  const dataChannels = dataChannelNames.reduce((acc: any, dataChannelName: string) => {
+    acc[dataChannelName] = peerConnection.createDataChannel(
+      dataChannelName,
+      dataChannelOptions
+    );
+    return acc;
+  }, {});
+  // const dataChannel = peerConnection.createDataChannel(
+  //   "dataChannel",
+  //   dataChannelOptions
+  // );
+  // dataChannel.onmessage = onMessageCallback;
 
   // setup listeners
   peerConnection.onicecandidate = onIceCandidateCallback;
@@ -69,7 +76,7 @@ async function createWebRtcOffer(
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
 
-  callback(offer, peerConnection);
+  callback(offer, peerConnection, dataChannels);
 }
 
 // function setRemoteDescription(remoteDescription: any) {
@@ -94,7 +101,7 @@ async function createWebRtcAnswer(
   offerFromMaster: any,
   onIceCandidateCallback: Function,
   onConnectionChangeCallback: Function,
-  onMessageCallback: Function,
+  onDataChannelCallback: Function,
   onAddStreamCallback: Function,
   callback: Function
 ) {
@@ -103,10 +110,7 @@ async function createWebRtcAnswer(
   });
 
   // setup datachannel
-  peerConnection.ondatachannel = (event: any) => {
-    // dataChannel = event.channel;
-    // dataChannel.onmessage = onMessageCallback;
-  };
+  peerConnection.ondatachannel = onDataChannelCallback;
 
   // setup listeners
   peerConnection.onicecandidate = onIceCandidateCallback;

@@ -1,6 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const TOAST_LIFESPAN = 5000;
+const TOAST_LIFESPAN = 6000;
 
 type Toast = {
   id: number;

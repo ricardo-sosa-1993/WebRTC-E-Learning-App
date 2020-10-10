@@ -8,7 +8,7 @@ import CallInfo from "../components/CallInfo";
 import ToolsBar from "../components/ToolsBar";
 import draggable from "../hocs/draggable";
 import Toast from "./Toast";
-import { toast } from "../store/ui";
+import { toggleAudioEnabled } from "../store/connection";
 
 const CallWrapper = styled.div``;
 const MainContainer = styled.div`
@@ -56,9 +56,14 @@ function Call() {
     userUuidTalking,
     roomId,
     isMaster,
+    audioEnabled
   } = useSelector((state: RootState) => state.connection);
   const baseUrl = window.location.href.split("/call")[0];
   const callUrl = `${baseUrl}/join-call/${roomId}`;
+
+  function onToggleAudioEnabled() {
+    dispatch(toggleAudioEnabled());
+  }
 
   if (!selfUuid) {
     return <Redirect to="/create-call" />;
@@ -68,7 +73,7 @@ function Call() {
     <CallWrapper>
       <Toast />
       {isMaster && <StyledCallInfo callUrl={callUrl} />}
-      <StyledToolsBar onMute={() => dispatch(toast('aaaa'))}/>
+      <StyledToolsBar audioEnabled={audioEnabled} onToggleAudioEnabled={onToggleAudioEnabled}/>
       <MainContainer></MainContainer>
       <UsersContainer>
         {audioAndVideoStream && (
@@ -77,6 +82,7 @@ function Call() {
             audioLevel={selfAudioLevel}
             userName={selfUsername}
             talking={userUuidTalking === selfUuid}
+            audioEnabled={audioEnabled}
             muted
           />
         )}
@@ -90,6 +96,7 @@ function Call() {
               audioLevel={peerConnections[peerUuid].audioLevel}
               userName={peerConnections[peerUuid].userName}
               talking={userUuidTalking === peerUuid}
+              audioEnabled={peerConnections[peerUuid].audioEnabled}
             />
           ))}
       </UsersContainer>

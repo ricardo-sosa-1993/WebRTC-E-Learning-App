@@ -24,15 +24,22 @@ const GlobalStyle = createGlobalStyle`
   html {
     font-size: 62.5%;
   }
+
+  #root {
+    height: 100vh;
+  }
   
   body {
+    height: 100vh;
     box-sizing: border-box;
     background-color: ${theme.colors.primary};
     font-family: ${theme.font};
     color: ${theme.colors.textDark}
   }
 `;
-const AppWrapper = styled.div``;
+const AppWrapper = styled.div`
+  height: 100%;
+`;
 
 function App() {
 

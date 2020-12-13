@@ -7,7 +7,7 @@ import {
 } from "../utils/webrtc";
 import { toast } from "./ui";
 
-const AUDIO_ANALYSIS_INTERVAL = 100;
+const AUDIO_ANALYSIS_INTERVAL = 200;
 
 // Data channel constants
 const COMMANDS_DATACHANNEL = "commandsDataChannel";

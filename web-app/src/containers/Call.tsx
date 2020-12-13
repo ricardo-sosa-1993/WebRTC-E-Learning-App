@@ -6,14 +6,19 @@ import { Redirect } from "react-router-dom";
 import styled from "styled-components";
 import CallInfo from "../components/CallInfo";
 import ToolsBar from "../components/ToolsBar";
+import Blackboard from "../components/Blackboard";
 import draggable from "../hocs/draggable";
 import Toast from "./Toast";
 import { toggleAudioEnabled } from "../store/connection";
 
-const CallWrapper = styled.div``;
+const CallWrapper = styled.div`
+  height: 100%;
+`;
 const MainContainer = styled.div`
   display: inline-block;
   width: 83%;
+  height: 95%;
+  padding: 8% 5%;
 `;
 const UsersContainer = styled.div`
   padding: 10px;
@@ -28,17 +33,18 @@ const UsersContainer = styled.div`
     margin-top: 0px;
   }
 `;
-const StyledCallInfo = draggable(styled(CallInfo)`
+const StyledCallInfo = styled(CallInfo)`
   position: absolute;
   top: 10px;
   left: 0;
   right: 0;
   margin-left: auto;
   margin-right: auto;
-`);
+  z-index: 1000;
+`;
 const StyledToolsBar = styled(ToolsBar)`
   position: absolute;
-  bottom: 8%;
+  bottom: 5%;
   left: 0;
   right: 0;
   margin-left: auto;
@@ -74,7 +80,9 @@ function Call() {
       <Toast />
       {isMaster && <StyledCallInfo callUrl={callUrl} />}
       <StyledToolsBar audioEnabled={audioEnabled} onToggleAudioEnabled={onToggleAudioEnabled}/>
-      <MainContainer></MainContainer>
+      <MainContainer>
+        <Blackboard />
+      </MainContainer>
       <UsersContainer>
         {audioAndVideoStream && (
           <UserBox

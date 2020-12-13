@@ -12,7 +12,8 @@ const Blackboard = () => {
   const [drawing, setDrawing] = useState(false);
   const canvasContainer = useRef() as React.MutableRefObject<HTMLInputElement>;
   const canvas = useRef() as React.RefObject<HTMLCanvasElement>;
-  let last = { x: 0, y: 0 };
+  const [lastX, setLastX] = useState<any>(0);
+  const [lastY, setLastY] = useState<any>(0);
 
   // Canvas initialization
   useEffect(() => {
@@ -30,19 +31,25 @@ const Blackboard = () => {
     let newX = x - canvasOffsetLeft;
     let newY = y - canvasOffsetTop;
 
-    if (last.x === 0 && last.y === 0) {
-      canvasContext.moveTo(newX, newY);
-    }
-
-    canvasContext.lineTo(newX, newY);
-
-    last.x = newX;
-    last.y = newY;
-
     canvasContext.lineCap = "round";
     canvasContext.strokeStyle = "green";
     canvasContext.lineWidth = 5;
-    canvasContext.stroke();
+
+    if (lastX !== 0 && lastY !== 0) {
+      canvasContext.lineTo(newX, newY);
+      canvasContext.stroke();
+    }else{
+      canvasContext.moveTo(newX, newY);
+    }
+
+    // canvasContext.fillStyle = "green";
+    // canvasContext.beginPath();
+    // canvasContext.arc(newX, newY, 2, 0, Math.PI*2, true);
+    // canvasContext.closePath();
+    // canvasContext.fill();
+
+    setLastX(newX);
+    setLastY(newY);
   };
 
   return (
@@ -50,13 +57,19 @@ const Blackboard = () => {
       <canvas
         ref={canvas}
         style={{ position: "absolute" }}
-        onMouseUp={() => setDrawing(false)}
+        onMouseUp={() => {
+          setDrawing(false);
+          canvasContext.closePath();
+        }}
         onMouseDown={() => {
-          setDrawing(true);
           canvasContext.beginPath();
+          setDrawing(true);
         }}
         onMouseMove={(event) => {
-          if (drawing) draw(event.clientX, event.clientY);
+          if (drawing) {
+        
+            draw(event.clientX, event.clientY);
+          }
         }}
       />
     </BlackboardContainer>

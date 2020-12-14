@@ -6,9 +6,13 @@ const BlackboardContainer = styled.div`
   height: 100%;
 `;
 
+type BlackboardProps = {
+  isDrawingSetting: boolean;
+}
+
 let canvasContext: any = null;
 
-const Blackboard = () => {
+const Blackboard = ({ isDrawingSetting }: BlackboardProps) => {
   const [drawing, setDrawing] = useState(false);
   const canvasContainer = useRef() as React.MutableRefObject<HTMLInputElement>;
   const canvas = useRef() as React.RefObject<HTMLCanvasElement>;
@@ -31,6 +35,14 @@ const Blackboard = () => {
     let newX = x - canvasOffsetLeft;
     let newY = y - canvasOffsetTop;
 
+    if(!isDrawingSetting){
+      canvasContext.globalCompositeOperation="destination-out";
+      canvasContext.arc(newX,newY,8,0,Math.PI*2,false);
+      canvasContext.fill();
+      return;
+    }
+
+    canvasContext.globalCompositeOperation="source-over";
     canvasContext.lineCap = "round";
     canvasContext.strokeStyle = "green";
     canvasContext.lineWidth = 5;

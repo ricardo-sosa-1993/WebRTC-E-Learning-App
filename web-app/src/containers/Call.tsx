@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useState} from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../store";
 import UserBox from "../components/UserBox";
@@ -7,7 +7,7 @@ import styled from "styled-components";
 import CallInfo from "../components/CallInfo";
 import ToolsBar from "../components/ToolsBar";
 import Blackboard from "../components/Blackboard";
-import draggable from "../hocs/draggable";
+import BlackboardToolsBar from "../components/BlackboardToolsBar";
 import Toast from "./Toast";
 import { toggleAudioEnabled } from "../store/connection";
 
@@ -18,7 +18,7 @@ const MainContainer = styled.div`
   display: inline-block;
   width: 83%;
   height: 95%;
-  padding: 8% 5%;
+  padding: 8% 5% 8% 10%;
 `;
 const UsersContainer = styled.div`
   padding: 10px;
@@ -50,6 +50,11 @@ const StyledToolsBar = styled(ToolsBar)`
   margin-left: auto;
   margin-right: auto;
 `;
+const StyledBlackboardToolsBar = styled(BlackboardToolsBar)`
+  position: absolute;
+  top: 10%;
+  left: 10px;
+`;
 
 function Call() {
   const dispatch = useDispatch();
@@ -64,11 +69,16 @@ function Call() {
     isMaster,
     audioEnabled
   } = useSelector((state: RootState) => state.connection);
+  const [drawing, setDrawing] = useState(true);
   const baseUrl = window.location.href.split("/call")[0];
   const callUrl = `${baseUrl}/join-call/${roomId}`;
 
   function onToggleAudioEnabled() {
     dispatch(toggleAudioEnabled());
+  }
+
+  function onDrawingChange(newDrawingValue: boolean){
+    setDrawing(newDrawingValue);
   }
 
   if (!selfUuid) {
@@ -80,8 +90,9 @@ function Call() {
       <Toast />
       {isMaster && <StyledCallInfo callUrl={callUrl} />}
       <StyledToolsBar audioEnabled={audioEnabled} onToggleAudioEnabled={onToggleAudioEnabled}/>
+      <StyledBlackboardToolsBar drawing={drawing} onDrawingChange={onDrawingChange}/>
       <MainContainer>
-        <Blackboard />
+        <Blackboard isDrawingSetting={drawing} />
       </MainContainer>
       <UsersContainer>
         {audioAndVideoStream && (
